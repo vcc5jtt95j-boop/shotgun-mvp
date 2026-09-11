@@ -3,11 +3,35 @@ const $ = (id) => document.getElementById(id);
 const state = {
   sessionId: localStorage.getItem("shotgun_sid") || "",
   lastFix: null,
+  prevFix: null,
   lastText: "",
   mode: "quiet_watch",
   watchId: null,
   lastTick: 0,
 };
+
+function toRad(d) {
+  return (d * Math.PI) / 180;
+}
+
+function bearingFrom(a, b) {
+  const p1 = toRad(a.lat);
+  const p2 = toRad(b.lat);
+  const dl = toRad(b.lon - a.lon);
+  const y = Math.sin(dl) * Math.cos(p2);
+  const x = Math.cos(p1) * Math.sin(p2) - Math.sin(p1) * Math.cos(p2) * Math.cos(dl);
+  return (Math.atan2(y, x) * 180) / Math.PI + 360;
+}
+
+function metersBetween(a, b) {
+  const r = 6371000;
+  const dphi = toRad(b.lat - a.lat);
+  const dl = toRad(b.lon - a.lon);
+  const h =
+    Math.sin(dphi / 2) ** 2 +
+    Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dl / 2) ** 2;
+  return 2 * r * Math.asin(Math.min(1, Math.sqrt(h)));
+}
 
 if ($("key")) $("key").value = localStorage.getItem("shotgun_key") || "";
 if ($("base")) $("base").value = localStorage.getItem("shotgun_base") || "https://api.x.ai/v1";
@@ -93,15 +117,26 @@ async function turn(payload) {
 
 function onPos(pos) {
   const c = pos.coords;
-  state.lastFix = {
+  const next = {
     lat: c.latitude,
     lon: c.longitude,
     heading: Number.isFinite(c.heading) ? c.heading : null,
     speed: Number.isFinite(c.speed) ? c.speed : 0,
   };
+  if (next.heading == null && state.lastFix && metersBetween(state.lastFix, next) >= 12) {
+    next.heading = bearingFrom(state.lastFix, next) % 360;
+    next.headingDerived = true;
+  } else if (next.heading == null && state.lastFix && state.lastFix.heading != null) {
+    next.heading = state.lastFix.heading;
+    next.headingDerived = true;
+  }
+  state.prevFix = state.lastFix;
+  state.lastFix = next;
   const bits = [
-    c.latitude.toFixed(5) + ", " + c.longitude.toFixed(5),
-    Number.isFinite(c.heading) ? Math.round(c.heading) + "°" : "no heading",
+    next.lat.toFixed(5) + ", " + next.lon.toFixed(5),
+    next.heading != null
+      ? Math.round(next.heading) + "°" + (next.headingDerived ? " est" : "")
+      : "no heading yet — keep walking",
     Number.isFinite(c.speed) ? Math.round(c.speed * 2.237) + " mph" : "",
   ].filter(Boolean);
   $("fix").textContent = bits.join(" · ");
