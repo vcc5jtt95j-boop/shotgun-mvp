@@ -1,0 +1,24 @@
+Shotgun MVP slice — how to run a drive test
+==========================================
+
+On a computer with Python 3.10+:
+
+  cd Shotgun_Workspace/05_Prototype
+  python3 server.py
+
+Then open on the phone (same Wi-Fi):
+
+  http://THAT_COMPUTER_LAN_IP:8765
+
+Keep the page open. Allow location. Use typed text or the phone keyboard microphone.
+
+Optional: paste an xAI or OpenAI API key in the page (or set SHOTGUN_LLM_KEY
+and SHOTGUN_LLM_BASE, default base https://api.x.ai/v1). Without a key the
+app still runs: GPS, session, pulses, logs. Answers will be thin geo-only.
+
+After the drive, session JSONL files are in:
+
+  05_Prototype/logs/
+
+This slice matches MVP Behavior Baseline v0.1 §8.
+Do not background-close the browser. No native iOS app yet.

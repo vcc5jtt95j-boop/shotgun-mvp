@@ -1,0 +1,59 @@
+GitHub + Render (free HTTPS) for Shotgun MVP slice
+==================================================
+
+Do this from home. About 20 minutes.
+
+1) GitHub account
+   Open https://github.com/signup
+   Use your email. Verify the email GitHub sends.
+   Pick the free plan.
+
+2) New repository
+   https://github.com/new
+   Repository name: shotgun-mvp
+   Public is fine for this prototype.
+   Do NOT add a README.
+   Create repository.
+
+3) Upload the prototype files
+   On the new empty repo page, click "uploading an existing file".
+   From your PC folder
+     C:\Shotgun_Program_Files\MVP_Slice_1\Shotgun_Workspace\05_Prototype
+   upload:
+     server.py
+     requirements.txt
+     Procfile
+     HOW_TO_RUN.txt
+     DEPLOY.txt
+   Then open the static folder on GitHub (Add file → Create new file is messy).
+   Easier: drag the whole 05_Prototype contents including the static folder
+   so the repo root contains server.py AND a static/ folder with
+     index.html  app.js  styles.css
+   Commit.
+
+4) Render account
+   Open https://render.com/register
+   Sign up with GitHub. Allow access to the shotgun-mvp repo.
+
+5) New Web Service
+   New → Web Service → connect shotgun-mvp
+   Runtime: Python
+   Build command: (leave blank)
+   Start command: python server.py
+   Instance: Free
+   Create web service.
+
+6) API key on the server (do not put the key in GitHub)
+   Render → shotgun-mvp → Environment
+   Add:
+     SHOTGUN_LLM_KEY    (your xai- key)
+     SHOTGUN_LLM_BASE   https://api.x.ai/v1
+     SHOTGUN_LLM_MODEL  grok-4-1-fast
+   Save. It will redeploy.
+
+7) Phone
+   Render gives a URL like https://shotgun-mvp.onrender.com
+   Open that on the phone. Allow location. Start trip.
+   First load after idle can take 30–60 seconds on the free tier.
+
+The laptop can stay off. Free Render sleeps after idle; next open is slow once, then fine.
