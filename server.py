@@ -48,6 +48,12 @@ Drill-down (critical):
 - Give one new fact per turn. Do not replay the identification.
 - Visual invention is still forbidden. Encyclopedia-style facts about a named place are required.
 
+Motion (critical):
+- MOTION in the payload is live movement: heading degrees, compass name, speed, road if known.
+- If the user asks which way they are heading or going, answer from MOTION. Do not say you have no information when compass or heading_deg is present.
+- If heading_source is track, say you inferred it from recent movement.
+- If MOTION has no heading, say you need them to keep moving a bit so the track can settle — not that you know nothing about the place.
+
 Return JSON only: {"speak": "...", "confidence": "high|medium|low", "entity_name": "... or empty", "entity_status": "candidate|confirmed|rejected|none"}
 """
 
@@ -68,6 +74,56 @@ def heading_delta(a, b):
         return 0
     d = abs((b - a + 180) % 360 - 180)
     return d
+
+
+def bearing_deg(lat1, lon1, lat2, lon2):
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dl = math.radians(lon2 - lon1)
+    y = math.sin(dl) * math.cos(p2)
+    x = math.cos(p1) * math.sin(p2) - math.sin(p1) * math.cos(p2) * math.cos(dl)
+    return (math.degrees(math.atan2(y, x)) + 360) % 360
+
+
+def compass_name(deg):
+    if deg is None:
+        return None
+    pts = [
+        "north", "northeast", "east", "southeast",
+        "south", "southwest", "west", "northwest",
+    ]
+    return pts[int((deg + 22.5) % 360) // 45]
+
+
+def is_direction_question(text: str) -> bool:
+    t = (text or "").lower()
+    keys = (
+        "what direction", "which direction", "which way", "what way",
+        "heading", "am i going", "where am i going", "which way am i",
+        "north", "south", "east", "west",
+    )
+    return any(k in t for k in keys) and any(
+        w in t for w in ("direction", "heading", "way", "going", "am i")
+    )
+
+
+def motion_from(sess, lat, lon, heading, speed):
+    last = sess.get("last_fix") or {}
+    derived = None
+    dist = None
+    if isinstance(lat, (int, float)) and isinstance(lon, (int, float)) and last.get("lat") is not None:
+        dist = haversine_m((last["lat"], last["lon"]), (lat, lon))
+        if dist >= 12:
+            derived = bearing_deg(last["lat"], last["lon"], lat, lon)
+    use = heading if heading is not None else derived
+    return {
+        "heading_deg": use,
+        "heading_source": "device" if heading is not None else ("track" if derived is not None else None),
+        "compass": compass_name(use),
+        "speed_mps": speed or 0,
+        "speed_mph": round((speed or 0) * 2.237, 1),
+        "moved_meters": dist,
+        "road": ((last.get("geo") or {}).get("road")),
+    }
 
 
 def load_session(sid: str) -> dict:
@@ -320,12 +376,28 @@ def handle_turn(body: dict) -> dict:
         sess["interests"] = interests
     sess["mode"] = mode
 
+    if heading is not None:
+        try:
+            heading = float(heading)
+        except (TypeError, ValueError):
+            heading = None
+    try:
+        speed = float(speed or 0)
+    except (TypeError, ValueError):
+        speed = 0
+
+    motion = motion_from(sess, lat, lon, heading, speed)
+    if motion.get("heading_deg") is not None and heading is None:
+        heading = motion["heading_deg"]
+
     geo = {}
     nearby = []
     if isinstance(lat, (int, float)) and isinstance(lon, (int, float)):
         geo = reverse_geocode(lat, lon)
         if action in ("ask", "open") or user_text:
             nearby = nearby_hints(lat, lon)
+        motion["road"] = geo.get("road") or motion.get("road")
+        motion["place"] = geo.get("label") or geo.get("name")
 
     trigger = "none"
     speak = False
@@ -366,20 +438,42 @@ def handle_turn(body: dict) -> dict:
             "mode": sess["mode"],
             "destination": sess.get("destination"),
             "interests": sess.get("interests"),
+            "motion": motion,
             "geo": {k: geo.get(k) for k in ("label", "name", "road", "type", "category") if geo},
             "nearby": nearby,
             "already_said": sess.get("said", [])[-12:],
             "entities": sess.get("entities", [])[-20:],
         }
-        llm = call_llm(payload, key, base, model) if trigger != "open" else None
-        if trigger == "open":
-            result = fallback_speak("open", geo, user_text)
-        elif llm and llm.get("speak"):
-            result = llm
+        if is_direction_question(user_text):
+            comp = motion.get("compass")
+            deg = motion.get("heading_deg")
+            place = motion.get("place") or geo.get("label") or "this stretch"
+            if comp and deg is not None:
+                src = "from how you've been moving" if motion.get("heading_source") == "track" else "from the heading reading"
+                result = {
+                    "speak": f"You're heading {comp}, about {int(round(deg))} degrees, through {place}.",
+                    "confidence": "high" if motion.get("heading_source") == "device" else "medium",
+                    "entity_name": "",
+                    "entity_status": "none",
+                }
+            else:
+                result = {
+                    "speak": "I have your position but not a settled heading yet. Keep moving a little and ask again.",
+                    "confidence": "low",
+                    "entity_name": "",
+                    "entity_status": "none",
+                }
+            llm = None
         else:
-            if llm and llm.get("error"):
-                llm_error = llm["error"]
-            result = fallback_speak(trigger, geo, user_text)
+            llm = call_llm(payload, key, base, model) if trigger != "open" else None
+            if trigger == "open":
+                result = fallback_speak("open", geo, user_text)
+            elif llm and llm.get("speak"):
+                result = llm
+            else:
+                if llm and llm.get("error"):
+                    llm_error = llm["error"]
+                result = fallback_speak(trigger, geo, user_text)
         text = (result.get("speak") or "").strip()
         if text:
             sess["said"].append(text)
