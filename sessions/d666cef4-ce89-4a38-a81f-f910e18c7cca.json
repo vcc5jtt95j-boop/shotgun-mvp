@@ -1,0 +1,25 @@
+{
+  "id": "d666cef4-ce89-4a38-a81f-f910e18c7cca",
+  "created": 1789082133.3884008,
+  "mode": "quiet_watch",
+  "interests": [],
+  "destination": "",
+  "said": [
+    "What's on the agenda today?"
+  ],
+  "entities": [],
+  "last_speak_ts": 1789082136.5605175,
+  "last_pulse_ts": 0,
+  "last_fix": {
+    "lat": 32.7157,
+    "lon": -117.1611,
+    "heading": null,
+    "speed": 0,
+    "geo": {
+      "road": null,
+      "label": "San Diego, San Diego County, California, United States"
+    },
+    "t": 1789082136.5605233
+  },
+  "started": true
+}

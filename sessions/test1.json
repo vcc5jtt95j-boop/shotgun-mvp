@@ -1,0 +1,36 @@
+{
+  "id": "test1",
+  "created": 1789082137.449873,
+  "mode": "quiet_watch",
+  "interests": [],
+  "destination": "",
+  "said": [
+    "What's on the agenda today?",
+    "We're around San Diego, San Diego County, California, United States. I can go deeper if you tell me what you want \u2014 name, history, or why it's built this way."
+  ],
+  "entities": [
+    {
+      "id": "fccd6cc0",
+      "name": "San Diego, San Diego County, California, United States",
+      "lat": 32.7157,
+      "lon": -117.1611,
+      "status": "candidate",
+      "confidence": "low",
+      "created": 1789082142.3433986
+    }
+  ],
+  "last_speak_ts": 1789082142.3433578,
+  "last_pulse_ts": 0,
+  "last_fix": {
+    "lat": 32.7157,
+    "lon": -117.1611,
+    "heading": null,
+    "speed": 0,
+    "geo": {
+      "road": null,
+      "label": "San Diego, San Diego County, California, United States"
+    },
+    "t": 1789082142.3434017
+  },
+  "started": true
+}

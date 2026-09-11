@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Shotgun — MVP slice</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header>
+    <h1>Shotgun</h1>
+    <p class="sub">MVP slice · keep this page open</p>
+  </header>
+
+  <section class="status">
+    <div id="fix">Waiting for GPS…</div>
+    <div id="mode">Mode: quiet watch</div>
+    <div id="llm">LLM: not set — geo-only answers</div>
+  </section>
+
+  <section class="controls">
+    <label>Destination / agenda (optional)
+      <input id="dest" placeholder="I-8 east, new to me" />
+    </label>
+    <label>This trip I care about (optional)
+      <input id="interests" placeholder="history, why places were built" />
+    </label>
+    <div class="row">
+      <button id="start" type="button">Start trip</button>
+      <button id="flag" type="button" class="secondary">Flag things along the way</button>
+    </div>
+  </section>
+
+  <section class="talk">
+    <label>You
+      <textarea id="utter" rows="3" placeholder="What's that range? / Any history here? / Quiet for a bit"></textarea>
+    </label>
+    <div class="row">
+      <button id="ask" type="button">Ask</button>
+      <button id="speakLast" type="button" class="secondary">Repeat last aloud</button>
+    </div>
+  </section>
+
+  <section class="transcript" id="transcript"></section>
+
+  <details class="keys">
+    <summary>API key (optional, stored on this phone)</summary>
+    <label>Key
+      <input id="key" type="password" autocomplete="off" />
+    </label>
+    <label>Base URL
+      <input id="base" value="https://api.x.ai/v1" />
+    </label>
+    <label>Model
+      <input id="model" value="grok-4-fast" />
+    </label>
+  </details>
+
+  <script src="/app.js"></script>
+</body>
+</html>
