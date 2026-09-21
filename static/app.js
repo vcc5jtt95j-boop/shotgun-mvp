@@ -181,15 +181,87 @@ $("flag").addEventListener("click", async () => {
   await turn({ action: "ask", user_text: "Flag things along the way." });
 });
 
+$("speakLast").addEventListener("click", () => speak(state.lastText));
+
+$("downloadLog").addEventListener("click", async () => {
+  if (!state.sessionId) {
+    addBubble("Shotgun", "Start a trip first.");
+    return;
+  }
+  try {
+    const res = await fetch("/api/log?session_id=" + encodeURIComponent(state.sessionId));
+    const data = await res.json();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "shotgun-trip-" + state.sessionId.slice(0, 8) + ".json";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  } catch (e) {
+    addBubble("Shotgun", "Could not download the trip log. " + e.message);
+  }
+});
+
+const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec = null;
+let recArmed = false;
+
+function setMicStatus(text, listening) {
+  if ($("micStatus")) $("micStatus").textContent = text;
+  if ($("mic")) $("mic").classList.toggle("listening", !!listening);
+}
+
+function sendUtterance(t) {
+  const text = (t || "").trim();
+  if (!text) return;
+  addBubble("You", text);
+  $("utter").value = "";
+  if (!state.sessionId) startWatch();
+  return turn({ action: "ask", user_text: text });
+}
+
+if (SpeechRec) {
+  rec = new SpeechRec();
+  rec.lang = "en-US";
+  rec.interimResults = false;
+  rec.maxAlternatives = 1;
+  rec.continuous = false;
+  rec.onstart = () => setMicStatus("Listening… tap Mic again to stop.", true);
+  rec.onerror = (e) => {
+    recArmed = false;
+    setMicStatus("Mic error: " + (e.error || "unknown") + ". Use the box + Ask if needed.", false);
+  };
+  rec.onend = () => {
+    recArmed = false;
+    setMicStatus("Tap Mic, speak, it sends when you pause.", false);
+  };
+  rec.onresult = (ev) => {
+    const said = ev.results && ev.results[0] && ev.results[0][0] && ev.results[0][0].transcript;
+    if (said) sendUtterance(said);
+  };
+  $("mic").addEventListener("click", () => {
+    if (recArmed) {
+      try { rec.stop(); } catch (_) {}
+      recArmed = false;
+      return;
+    }
+    try {
+      window.speechSynthesis && window.speechSynthesis.cancel();
+      rec.start();
+      recArmed = true;
+    } catch (e) {
+      setMicStatus("Could not start mic: " + e.message, false);
+    }
+  });
+} else {
+  setMicStatus("This browser has no speech input. Type, or use the keyboard mic, then Ask.", false);
+  if ($("mic")) $("mic").disabled = true;
+}
+
 $("ask").addEventListener("click", async () => {
   const t = $("utter").value.trim();
   if (!t) return;
-  addBubble("You", t);
-  $("utter").value = "";
-  if (!state.sessionId) startWatch();
-  await turn({ action: "ask", user_text: t });
+  await sendUtterance(t);
 });
-
-$("speakLast").addEventListener("click", () => speak(state.lastText));
 
 startWatch();

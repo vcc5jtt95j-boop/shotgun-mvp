@@ -47,6 +47,8 @@ button {
   font-size: 1rem;
 }
 button.secondary { background: #3a372f; color: var(--ink); font-weight: 600; }
+button.listening { background: #8b2e2e; color: #fff; }
+.mic-status { margin-top: 0.5rem; font-size: 0.85rem; color: var(--muted); }
 .transcript { min-height: 8rem; }
 .bubble { margin: 0.6rem 0; padding: 0.7rem 0.8rem; border-radius: 10px; }
 .bubble.sys { background: #2a261c; }
