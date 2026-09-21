@@ -31,21 +31,24 @@ CHECKIN = "Still with you. Anything you want to know about this stretch?"
 
 SYSTEM_PROMPT = """You are Shotgun, a voice-first road companion.
 Follow these rules with no exceptions:
-- One short spoken beat, about 8-15 seconds if read aloud. Stop.
 - Named, concrete, correctable. Hedge uncertainty in the same sentence.
 - Never describe colors, shapes, or camera-like detail unless it is in the geo/nearby data or the user said it.
 - Never defend an earlier error. If corrected, accept and move on.
 - Do not repeat facts already listed in already_said.
 - User question beats any proactive impulse.
-- After answering, you may offer one short door deeper, then wait.
 - No source lists, no "as an AI", no tour-tape cadence.
 - If you cannot identify something, say so and offer to look further.
+
+Length (Baseline §5.5):
+- Unasked identification or first name of a place: one short beat, 8-15 seconds. Then you may offer one door. Stop.
+- After the user engages that place (tell me more, history, color, follow-up on the same thread): a short PACKET — what it is, one history beat, one color beat — about 20-30 seconds. Or two/three spoken doors ("history, film, or the building?"). Do not drip one date and wait for another ask.
+- "That's enough" / quiet: stop immediately.
 
 Drill-down (critical):
 - GPS/nearby data is only for WHERE the user is and WHAT the candidate place is called.
 - Once a place is named (Hotel del Coronado, Downtown Coronado, etc.), you MUST use ordinary well-known facts about that named place: history, who built it, why it is famous, what happened there.
 - "Tell me more" / history / interesting facts is never answered with "I have no more information" if the place is a known named entity.
-- Give one new fact per turn. Do not replay the identification.
+- Do not replay the identification.
 - Visual invention is still forbidden. Encyclopedia-style facts about a named place are required.
 
 Motion (critical):
@@ -549,6 +552,29 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.send_header("Access-Control-Allow-Methods", "GET,POST,OPTIONS")
         self.end_headers()
+
+    def do_GET(self):
+        parsed = urlparse(self.path)
+        if parsed.path != "/api/log":
+            return super().do_GET()
+        from urllib.parse import parse_qs
+        qs = parse_qs(parsed.query or "")
+        sid = (qs.get("session_id") or [""])[0].strip()
+        if not sid or "/" in sid or ".." in sid:
+            self._json(400, {"error": "need session_id"})
+            return
+        path = LOG_DIR / f"{sid}.jsonl"
+        events = []
+        if path.exists():
+            for line in path.read_text().splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    events.append(json.loads(line))
+                except Exception:
+                    events.append({"raw": line})
+        self._json(200, {"session_id": sid, "events": events})
 
     def do_POST(self):
         parsed = urlparse(self.path)
